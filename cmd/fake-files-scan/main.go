@@ -2,97 +2,123 @@ package main
 
 import (
 	"encoding/base64"
-	"encoding/json"
+	"flag"
 	"fmt"
 	"mime"
 	"net/http"
 	"os"
 	"path/filepath"
 	"strings"
+
+	log "github.com/sirupsen/logrus"
 )
 
+var (
+	startDir        = "."
+	embedSize int64 = 1000
+
+	startDirLen int
+)
+
+func init() {
+	flag.StringVar(&startDir, "start-dir", startDir, "where to start scanning")
+	flag.Int64Var(&embedSize, "embed-size", embedSize, "files of this size or smaller are embedded (set to -1 to avoid catching empty files)")
+}
+
 func main() {
-	if len(os.Args) != 2 {
-		fmt.Fprintf(os.Stderr, "usage: %s path\n", os.Args[0])
-		return
-	}
-	skips, types, ll, err := walk(os.Args[1])
-	if err != nil {
-		fmt.Fprintln(os.Stderr, err)
-		return
+	flag.Parse()
+
+	startDir, _ = filepath.Abs(startDir)
+
+	startDirLen = len(startDir)
+	if !strings.HasSuffix(startDir, "/") {
+		startDirLen++
 	}
 
-	b, err := json.MarshalIndent(ll, "", "    ")
-	if err != nil {
-		fmt.Fprintln(os.Stderr, err)
-		return
-	}
-	os.Stdout.Write(b)
-	fmt.Println("")
+	log.Printf("starting from %v", startDir)
 
-	fmt.Fprintf(os.Stderr, "found %d files, skipped %d files, %d types:\n", len(ll), skips, len(types))
+	skips, types, count, err := walk(startDir)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	log.Printf("found %d files, skipped %d files, %d types", count, skips, len(types))
 	for t, c := range types {
-		fmt.Fprintf(os.Stderr, "%s %d\n", t, c)
+		log.Printf("%s %d", t, c)
 	}
 }
 
-func walk(dir string) (int, map[string]int, map[string]string, error) {
+func report(path, fileType string, size int64) {
+	fmt.Printf("%v\t%v\t%v\n", path[startDirLen:], fileType, size)
+}
+
+func walk(dir string) (int, map[string]int, int, error) {
 	types := make(map[string]int, 10)
-	ll := make(map[string]string, 10000)
-	var skips int
+	var skips, count int
 	err := filepath.Walk(dir, func(path string, f os.FileInfo, err error) error {
-		if 0 != (f.Mode() & (os.ModeSymlink | os.ModeDir)) {
+		if err != nil {
+			log.Error(err)
 			return nil
 		}
+
+		if 0 != (f.Mode() & (os.ModeSymlink | os.ModeDir)) {
+			// skip dirs and symlinks
+			return nil
+		}
+
 		t := mime.TypeByExtension(filepath.Ext(path))
-		if len(t) == 0 {
-			if f.Size() == 0 {
-				types["empty"]++
-				ll[path] = "empty"
-				return nil
-			}
+
+		if len(t) == 0 && f.Size() > 0 {
 			fp, err := os.Open(path)
 			if err != nil {
-				fmt.Fprintf(os.Stderr, "skipping: %s (%s)\n", path, err)
+				log.Warnf("skipping: %s (%s)", path, err)
 				skips++
 				return nil
 			}
 			defer fp.Close()
 			b := make([]byte, 512)
-			_, err = fp.Read(b)
-			if err != nil {
-				fmt.Fprintf(os.Stderr, "skipping: %s (%s)\n", path, err)
+			if _, err = fp.Read(b); err != nil {
+				log.Warnf("skipping: %s (%s)", path, err)
 				skips++
 				return nil
 			}
 
 			t = http.DetectContentType(b)
-			t = strings.Replace(t, "; charset=utf-8", "", -1)
 		}
 
-		if f.Size() > 0 && f.Size() <= 1000 {
+		t = strings.ReplaceAll(t, "; charset=utf-8", "")
+
+		if f.Size() <= embedSize {
+			if f.Size() == 0 {
+				count++
+				report(path, "base64:", 0)
+				types["embedded"]++
+				return nil
+			}
 			fp, err := os.Open(path)
 			if err != nil {
-				fmt.Fprintf(os.Stderr, "skipping: %s (%s)\n", path, err)
+				log.Warnf("skipping: %s (%s)", path, err)
 				skips++
 				return nil
 			}
 			defer fp.Close()
-			b := make([]byte, 1000)
+			b := make([]byte, embedSize)
 			c, err := fp.Read(b)
 			if err != nil {
-				fmt.Fprintf(os.Stderr, "skipping: %s (%s)\n", path, err)
+				log.Warnf("skipping: %s (%s)", path, err)
 				skips++
 				return nil
 			}
-			ll[path] = "base64:" + base64.RawStdEncoding.EncodeToString(b[0:c])
+			count++
+			report(path, "base64:"+base64.RawStdEncoding.EncodeToString(b[0:c]), f.Size())
 			types["embedded"]++
 		} else {
 			types[t]++
-			ll[path] = t
+			count++
+			report(path, t, f.Size())
 		}
 
 		return nil
 	})
-	return skips, types, ll, err
+	return skips, types, count, err
 }
