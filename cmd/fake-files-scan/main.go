@@ -61,7 +61,7 @@ func walk(dir string) (int, map[string]int, int, error) {
 			return nil
 		}
 
-		if f.Mode()&(os.ModeSymlink|os.ModeDir) != 0 {
+		if mode := f.Mode(); mode == os.ModeSymlink || mode == os.ModeDir {
 			// skip dirs and symlinks
 			return nil
 		}
