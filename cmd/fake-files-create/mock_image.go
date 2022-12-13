@@ -5,7 +5,6 @@ import (
 	"bytes"
 	"image"
 	"image/color"
-	// "image/gif"
 	"image/jpeg"
 	"image/png"
 	"math"
