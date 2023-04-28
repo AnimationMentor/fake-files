@@ -7,7 +7,6 @@ import (
 	"encoding/base64"
 	"flag"
 	"fmt"
-	"io/ioutil"
 	"log"
 	"os"
 	"path/filepath"
@@ -139,7 +138,7 @@ func makeMock(dryRun bool, log *logrus.Entry, filename, contentType string, size
 	}
 
 	// create the file
-	if err := ioutil.WriteFile(filename, getMockContents(contentType, size), 0664); err != nil {
+	if err := os.WriteFile(filename, getMockContents(contentType, size), 0664); err != nil {
 		log.Errorf("problem writing %s: %v", filename, err)
 		return 0, 0, 1
 	}
