@@ -35,14 +35,19 @@ base64 ${resources}/small.webm >> embedded_content.go
 echo "\`" >> embedded_content.go
 
 echo "var base64Gif = \`" >> embedded_content.go
-base64 ${resources}/Small-animated-flashing-sunshine-icon.gif >> embedded_content.go
+base64 ${resources}/small.gif >> embedded_content.go
+echo "\`" >> embedded_content.go
+
+echo "var base64Webp = \`" >> embedded_content.go
+base64 ${resources}/small.webp >> embedded_content.go
 echo "\`" >> embedded_content.go
 
 cat <<EOF >> embedded_content.go
 
     contentMap["video/mp4"] = unembed(base64SmallMP4, "small.mp4")
     contentMap["video/webm"] = unembed(base64SmallWebm, "small.webm")
-    contentMap["image/gif"] = unembed(base64Gif, "Small-animated-flashing-sunshine-icon.gif")
+    contentMap["image/gif"] = unembed(base64Gif, "small.gif")
+    contentMap["image/webp"] = unembed(base64Webp, "small.webp")
 }
 
 EOF
