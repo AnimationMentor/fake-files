@@ -128,8 +128,6 @@ func worker(i int) {
 		myFilesWrote += w
 		myFilesFailed += f
 		myFilesSkipped += s
-
-		// make one task complete on the progress bar
 	}
 	atomic.AddInt64(&filesWrote, int64(myFilesWrote))
 	atomic.AddInt64(&filesFailed, int64(myFilesFailed))
@@ -139,7 +137,8 @@ func worker(i int) {
 // makeMock creates a mock file of the given type. If the file already exists, it does nothing.
 // Return count for files wrote, skipped, and failed.
 func makeMock(dryRun bool, log *logrus.Entry, filename, contentType string, size int) (int, int, int) {
-	defer bar.Add(1)
+	defer bar.Add(1) // mark one task complete on the progress bar
+
 	// if file already exists then do nothing
 	if !overwrite {
 		if _, err := os.Stat(filename); err == nil {
