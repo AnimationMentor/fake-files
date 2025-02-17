@@ -15,6 +15,7 @@ import (
 	"sync"
 	"sync/atomic"
 
+	"github.com/AnimationMentor/fake-files/cmd/fake-files-create/maker"
 	"github.com/sirupsen/logrus"
 )
 
@@ -171,6 +172,6 @@ func getMockContents(contentType string, size int) []byte {
 
 func init() {
 	contentMap["text"] = []byte("Hello, I am mock text file.")
-	contentMap["image/png"] = makePNG()
-	contentMap["image/jpeg"] = makeJpeg()
+	contentMap["image/png"] = maker.MakePNG()
+	contentMap["image/jpeg"] = maker.MakeJPEG()
 }
