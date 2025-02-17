@@ -26,19 +26,19 @@ func init() {
 
 EOF
 
-echo "var base64SmallMP4 = \`" >> embedded_content.go
+echo -n "const base64SmallMP4 = \`" >> embedded_content.go
 base64 ${resources}/small.mp4 >> embedded_content.go
 echo "\`" >> embedded_content.go
 
-echo "var base64SmallWebm = \`" >> embedded_content.go
+echo -n "const base64SmallWebm = \`" >> embedded_content.go
 base64 ${resources}/small.webm >> embedded_content.go
 echo "\`" >> embedded_content.go
 
-echo "var base64Gif = \`" >> embedded_content.go
+echo -n "const base64Gif = \`" >> embedded_content.go
 base64 ${resources}/small.gif >> embedded_content.go
 echo "\`" >> embedded_content.go
 
-echo "var base64Webp = \`" >> embedded_content.go
+echo -n "const base64Webp = \`" >> embedded_content.go
 base64 ${resources}/small.webp >> embedded_content.go
 echo "\`" >> embedded_content.go
 
