@@ -4,9 +4,11 @@ package main
 
 import (
 	"bufio"
+	"bytes"
 	"encoding/base64"
 	"flag"
 	"fmt"
+	"io"
 	"log"
 	"os"
 	"path/filepath"
@@ -15,6 +17,8 @@ import (
 	"sync"
 	"sync/atomic"
 
+	"github.com/AnimationMentor/fake-files/cmd/fake-files-create/maker"
+	"github.com/schollz/progressbar/v3"
 	"github.com/sirupsen/logrus"
 )
 
@@ -58,6 +62,19 @@ func main() {
 		return
 	}
 
+	// how many lines are we dealing with
+	// get a count so we can make a progress bad
+	lineCount, err := countLinesInFile(inputFilename)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	name := "creating files"
+	if dryRun {
+		name = "dry run"
+	}
+	bar = progressbar.Default(int64(lineCount), name)
+
 	fp, err := os.Open(inputFilename)
 	if err != nil {
 		log.Fatal(err)
@@ -94,10 +111,12 @@ func main() {
 var filesWrote, filesFailed, filesSkipped int64
 var workChannel = make(chan *fileEntry)
 var wg = sync.WaitGroup{}
+var bar *progressbar.ProgressBar
 
 func worker(i int) {
 	wg.Add(1)
 	defer wg.Done()
+
 	rlog := logrus.WithField("worker", i)
 	var myFilesWrote, myFilesSkipped, myFilesFailed int
 	for {
@@ -118,16 +137,18 @@ func worker(i int) {
 // makeMock creates a mock file of the given type. If the file already exists, it does nothing.
 // Return count for files wrote, skipped, and failed.
 func makeMock(dryRun bool, log *logrus.Entry, filename, contentType string, size int) (int, int, int) {
+	defer bar.Add(1) // mark one task complete on the progress bar
+
 	// if file already exists then do nothing
 	if !overwrite {
 		if _, err := os.Stat(filename); err == nil {
-			log.Infof("skipping: %s %s", filename, contentType)
+			log.Debugf("skipping: %s %s", filename, contentType)
 			return 0, 1, 0
 		}
 	}
 
 	if dryRun {
-		log.Infof("dry run, not creating: %s %s", filename, contentType)
+		log.Debugf("dry run, not creating: %s %s", filename, contentType)
 		return 1, 0, 0
 	}
 
@@ -143,7 +164,7 @@ func makeMock(dryRun bool, log *logrus.Entry, filename, contentType string, size
 		return 0, 0, 1
 	}
 
-	log.Infof("wrote: %s %s", filename, contentType)
+	log.Debugf("wrote: %s %s", filename, contentType)
 	return 1, 0, 0
 }
 
@@ -171,6 +192,33 @@ func getMockContents(contentType string, size int) []byte {
 
 func init() {
 	contentMap["text"] = []byte("Hello, I am mock text file.")
-	contentMap["image/png"] = makePNG()
-	contentMap["image/jpeg"] = makeJpeg()
+	contentMap["image/png"] = maker.MakePNG()
+	contentMap["image/jpeg"] = maker.MakeJPEG()
+}
+
+func countLinesInFile(filename string) (int, error) {
+	file, err := os.Open(filename)
+	if err != nil {
+		return -1, err
+	}
+	defer file.Close()
+
+	bufferSize := 32 * 1024
+	separator := "\n"
+
+	buf := make([]byte, bufferSize)
+	var count int
+
+	for {
+		n, err := file.Read(buf)
+		count += bytes.Count(buf[:n], []byte(separator))
+
+		if err != nil {
+			if err == io.EOF {
+				return count, nil
+			}
+			return count, err
+		}
+
+	}
 }

@@ -1,4 +1,4 @@
-package main
+package maker
 
 import (
 	"bufio"
@@ -53,7 +53,7 @@ func makeRawImage() *image.RGBA {
 	return m
 }
 
-func makePNG() []byte {
+func MakePNG() []byte {
 	if img == nil {
 		img = makeRawImage()
 	}
@@ -64,7 +64,7 @@ func makePNG() []byte {
 	return buf.Bytes()
 }
 
-func makeJpeg() []byte {
+func MakeJPEG() []byte {
 	if img == nil {
 		img = makeRawImage()
 	}
