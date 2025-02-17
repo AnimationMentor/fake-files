@@ -68,7 +68,12 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	bar = progressbar.Default(int64(lineCount), "creating")
+
+	name := "creating files"
+	if dryRun {
+		name = "dry run"
+	}
+	bar = progressbar.Default(int64(lineCount), name)
 
 	fp, err := os.Open(inputFilename)
 	if err != nil {
