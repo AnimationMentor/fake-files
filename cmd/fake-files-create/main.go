@@ -92,8 +92,13 @@ func main() {
 			log.Fatalf("malformed input: %v", fileInfo)
 		}
 		size, _ := strconv.Atoi(fileInfo[2])
+		filename := fileInfo[0]
+		if err := ensureDirExists(filename); err != nil {
+			log.Fatalf("could not ensure directory exists for %s: %v", filename, err)
+		}
+
 		workChannel <- &fileEntry{
-			name:        filepath.Join(topLevelDir, fileInfo[0]),
+			name:        filepath.Join(topLevelDir, filename),
 			contentType: fileInfo[1],
 			size:        size,
 		}
@@ -106,6 +111,20 @@ func main() {
 	close(workChannel)
 	wg.Wait()
 	log.Printf("%d files wrote, %d skipped, %d failed", filesWrote, filesSkipped, filesFailed)
+}
+
+func ensureDirExists(filename string) error {
+	dir := filepath.Dir(filename)
+	if _, err := os.Stat(dir); err != nil && os.IsNotExist(err) {
+		log.Printf("creating directory: %s", dir)
+		if err := os.MkdirAll(dir, 0775); err != nil {
+			return err
+		}
+	} else if err != nil {
+		return err
+
+	}
+	return nil
 }
 
 var filesWrote, filesFailed, filesSkipped int64
