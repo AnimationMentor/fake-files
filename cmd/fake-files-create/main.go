@@ -116,7 +116,6 @@ func main() {
 func ensureDirExists(filename string) error {
 	dir := filepath.Dir(filename)
 	if _, err := os.Stat(dir); err != nil && os.IsNotExist(err) {
-		log.Printf("creating directory: %s", dir)
 		if err := os.MkdirAll(dir, 0775); err != nil {
 			return err
 		}
